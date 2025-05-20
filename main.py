@@ -7,8 +7,8 @@ import os
 app = Flask(__name__)
 
 # ここにLINEからもらった秘密のキーを貼るよ💕
-LINE_CHANNEL_ACCESS_TOKEN = os.environ["0YU5gWvZd3IlR/XO2S8L2U6LL/vPwQr6zV2pGoVFaYFOnhZcDx7WoxnAcR7G58j2TBj+FTYOTlI7bmDiQ39/8jhs4xDdnQSHqqmI9eG0RWE4Q7i/g8G/JdRFEPoxUYMXUq3nxrpRYdKxAyWPH+93lgdB04t89/1O/w1cDnyilFU="]
-LINE_CHANNEL_SECRET = os.environ["7f44df3f356e512ffb046676e56f46f0"]
+LINE_CHANNEL_ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
+LINE_CHANNEL_SECRET = os.environ["LINE_CHANNEL_SECRET"]
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
