@@ -8,42 +8,32 @@ from linebot.v3.exceptions import InvalidSignatureError
 import os
 import json
 from dotenv import load_dotenv
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
-# .env 読み込み
+# .env読み込み
 load_dotenv()
 ACCESS_TOKEN = os.getenv("CHANNEL_ACCESS_TOKEN")
 CHANNEL_SECRET = os.getenv("CHANNEL_SECRET")
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")  # スプレッドシートIDを環境変数から取得
 
-# Flask 初期化
+# Flask初期化
 app = Flask(__name__)
 
-# LINE API設定
+# LINE設定
 configuration = Configuration(access_token=ACCESS_TOKEN)
 api_client = ApiClient(configuration=configuration)
 line_bot_api = MessagingApi(api_client)
 handler = WebhookHandler(CHANNEL_SECRET)
 
-# GoogleスプレッドシートからFlex JSONを取得
-def get_flex_json_from_sheet(keyword):
+# 複数Flexを1ファイルから読み込む関数
+def get_flex_json_by_keyword(keyword):
     try:
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-        client = gspread.authorize(creds)
-
-        sheet = client.open_by_key(SPREADSHEET_ID).sheet1  # シート1を対象
-        records = sheet.get_all_records()
-
-        for row in records:
-            if row['キーワード'] == keyword:
-                return json.loads(row['JSON（Flexメッセージの中身）'])  # 文字列 → dict変換
+        with open("./flex/flex_messages.json", "r", encoding="utf-8") as f:
+            all_flex = json.load(f)
+            return all_flex.get(keyword)
     except Exception as e:
-        print("❌ スプレッドシート読み込みエラー:", e)
-    return None
+        print(f"❌ Flexメッセージ読み込みエラー: {e}")
+        return None
 
-# Webhookのエンドポイント
+# Webhookエンドポイント
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers.get("X-Line-Signature")
@@ -58,31 +48,22 @@ def callback():
 
     return "OK"
 
-# メッセージ受信処理
+# メッセージ受信
 @handler.add(MessageEvent)
 def handle_message(event):
     if isinstance(event.message, TextMessageContent):
         user_message = event.message.text.strip()
 
-        flex_data = get_flex_json_from_sheet(user_message)
+        flex_data = get_flex_json_by_keyword(user_message)
         if flex_data:
-            # Flexメッセージで返信
             response = ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[
-                    FlexMessage(
-                        alt_text="Flexメッセージの返信です",
-                        contents=flex_data
-                    )
-                ]
+                messages=[FlexMessage(alt_text=f"{user_message}のFlexメッセージ", contents=flex_data)]
             )
         else:
-            # 該当キーワードがないときはテキストで返す
             response = ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[
-                    TextMessage(text=f"『{user_message}』に対応するメッセージが見つかりませんでした。")
-                ]
+                messages=[TextMessage(text=f"『{user_message}』に対応するFlexメッセージは見つかりませんでした。")]
             )
 
         line_bot_api.reply_message(response)
