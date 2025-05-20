@@ -19,7 +19,18 @@ handler = WebhookHandler(CHANNEL_SECRET)
 app = Flask(__name__)
 line_bot_api = MessagingApi(configuration)
 
+<<<<<<< HEAD
 @app.route("/callback", methods=['POST'])
+=======
+# ここにLINEからもらった秘密のキーを貼るよ💕
+LINE_CHANNEL_ACCESS_TOKEN = os.environ["LINE_CHANNEL_ACCESS_TOKEN"]
+LINE_CHANNEL_SECRET = os.environ["LINE_CHANNEL_SECRET"]
+
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
+
+@app.route("/callback", methods=["POST"])
+>>>>>>> 0eb39c4355b7eb2137e0fcdd6b482be960a3c620
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
