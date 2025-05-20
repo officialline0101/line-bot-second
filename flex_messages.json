@@ -7,22 +7,7 @@
       "contents": [
         {
           "type": "text",
-          "text": "これは『試し』のFlexメッセージです✨",
-          "weight": "bold",
-          "size": "lg"
-        }
-      ]
-    }
-  },
-  "予約": {
-    "type": "bubble",
-    "body": {
-      "type": "box",
-      "layout": "vertical",
-      "contents": [
-        {
-          "type": "text",
-          "text": "これは『予約』のFlexメッセージだよ📅",
+          "text": "これは試しメッセージです！",
           "weight": "bold",
           "size": "lg"
         }
