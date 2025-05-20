@@ -55,15 +55,28 @@ def handle_message(event):
         user_message = event.message.text.strip()
 
         flex_data = get_flex_json_by_keyword(user_message)
+
         if flex_data:
-            response = ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[FlexMessage(alt_text=f"{user_message}のFlexメッセージ", contents=flex_data)]
-            )
+            try:
+                response = ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[
+                        FlexMessage(
+                            alt_text=f"{user_message}のFlexメッセージ",
+                            contents=FlexContainer.from_dict(flex_data)  # ← 型に変換
+                        )
+                    ]
+                )
+            except Exception as e:
+                print("❌ Flex変換エラー:", e)
+                response = ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text="Flexメッセージの変換に失敗しました。")]
+                )
         else:
             response = ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[TextMessage(text=f"『{user_message}』に対応するFlexメッセージは見つかりませんでした。")]
+                messages=[TextMessage(text=f"『{user_message}』に対応するメッセージが見つかりませんでした。")]
             )
 
         line_bot_api.reply_message(response)
