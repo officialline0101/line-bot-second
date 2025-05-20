@@ -39,23 +39,49 @@ def callback():
 
     return "OK"
 
-# テキストメッセージを受け取ったときの処理
+from linebot.v3.messaging.models import FlexMessage, BubbleContainer, BoxComponent, TextComponent
+
 @handler.add(MessageEvent)
 def handle_message(event):
     if isinstance(event.message, TextMessageContent):
         user_message = event.message.text
-        # 返答内容（例：ギャル風）
-        if "こんにちは" in user_message:
-            reply_text = "ギャル参上👠✨"
-        elif "予約" in user_message:
-            reply_text = "予約ね〜💖空いてるか確認してみるぅ！"
-        else:
-            reply_text = f"それな〜『{user_message}』って感じ💋"
 
-        response = ReplyMessageRequest(
-            reply_token=event.reply_token,
-            messages=[TextMessage(text=reply_text)]
-        )
+        if "試し" in user_message:
+            # Flexメッセージを定義
+            bubble = BubbleContainer(
+                body=BoxComponent(
+                    layout="vertical",
+                    contents=[
+                        TextComponent(text="🌟 試しメッセージだよ 🌟", weight="bold", size="lg"),
+                        TextComponent(text="これはFlex Messageのテストだよ〜ん💬", wrap=True)
+                    ]
+                )
+            )
+            flex_message = FlexMessage(
+                alt_text="Flexメッセージ：試し",
+                contents=bubble
+            )
+
+            response = ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[flex_message]
+            )
+        elif "こんにちは" in user_message:
+            response = ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text="ギャル参上👠✨")]
+            )
+        elif "予約" in user_message:
+            response = ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text="予約ね〜💖空いてるか確認してみるぅ！")]
+            )
+        else:
+            response = ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=f"それな〜『{user_message}』って感じ💋")]
+            )
+
         line_bot_api.reply_message(response)
 
 if __name__ == "__main__":
