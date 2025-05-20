@@ -26,7 +26,7 @@ handler = WebhookHandler(CHANNEL_SECRET)
 # 複数Flexを1ファイルから読み込む関数
 def get_flex_json_by_keyword(keyword):
     try:
-        with open("./flex/flex_messages.json", "r", encoding="utf-8") as f:
+        with open("./flex_messages.json", "r", encoding="utf-8") as f:
             all_flex = json.load(f)
             return all_flex.get(keyword)
     except Exception as e:
