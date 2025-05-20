@@ -6,17 +6,18 @@ from linebot.v3.messaging.models import (
     TextMessage,
     FlexMessage
 )
+from linebot.v3.webhook.models import MessageEvent
 from linebot.v3.exceptions import InvalidSignatureError
 import os
 import json
 from dotenv import load_dotenv
 
-# 環境変数の読み込み
+# .envファイルから環境変数を読み込み
 load_dotenv()
 ACCESS_TOKEN = os.getenv("CHANNEL_ACCESS_TOKEN")
 CHANNEL_SECRET = os.getenv("CHANNEL_SECRET")
 
-# LINE設定
+# LINE Messaging API設定
 configuration = Configuration(access_token=ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
 app = Flask(__name__)
@@ -24,7 +25,7 @@ line_bot_api = MessagingApi(configuration)
 
 @app.route("/callback", methods=['POST'])
 def callback():
-    signature = request.headers['X-Line-Signature']
+    signature = request.headers.get('X-Line-Signature')
     body = request.get_data(as_text=True)
     print(f"📩 Webhook受信: {body}")
 
@@ -33,14 +34,15 @@ def callback():
     except InvalidSignatureError as e:
         print("❌ 署名エラー:", e)
         abort(400)
+
     return 'OK'
 
-@handler.add(event_type="message")
+@handler.add(MessageEvent)
 def handle_message(event):
     user_message = event.message.text
 
+    # 「試し」と送られたときだけFlexメッセージを返す
     if user_message == "試し":
-        # Flex Message JSONをPython辞書形式で用意
         flex_content = {
             "type": "bubble",
             "hero": {
@@ -69,8 +71,16 @@ def handle_message(event):
                         "layout": "baseline",
                         "margin": "md",
                         "contents": [
-                            *[{"type": "icon", "size": "sm", "url": "https://developers-resource.landpress.line.me/fx/img/review_gold_star_28.png"} for _ in range(4)],
-                            {"type": "icon", "size": "sm", "url": "https://developers-resource.landpress.line.me/fx/img/review_gray_star_28.png"},
+                            *[{
+                                "type": "icon",
+                                "size": "sm",
+                                "url": "https://developers-resource.landpress.line.me/fx/img/review_gold_star_28.png"
+                            } for _ in range(4)],
+                            {
+                                "type": "icon",
+                                "size": "sm",
+                                "url": "https://developers-resource.landpress.line.me/fx/img/review_gray_star_28.png"
+                            },
                             {
                                 "type": "text",
                                 "text": "4.0",
@@ -92,8 +102,21 @@ def handle_message(event):
                                 "layout": "baseline",
                                 "spacing": "sm",
                                 "contents": [
-                                    {"type": "text", "text": "Place", "color": "#aaaaaa", "size": "sm", "flex": 1},
-                                    {"type": "text", "text": "Flex Tower, 7-7-4 Midori-ku, Tokyo", "wrap": True, "color": "#666666", "size": "sm", "flex": 5}
+                                    {
+                                        "type": "text",
+                                        "text": "Place",
+                                        "color": "#aaaaaa",
+                                        "size": "sm",
+                                        "flex": 1
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": "Flex Tower, 7-7-4 Midori-ku, Tokyo",
+                                        "wrap": True,
+                                        "color": "#666666",
+                                        "size": "sm",
+                                        "flex": 5
+                                    }
                                 ]
                             },
                             {
@@ -101,8 +124,21 @@ def handle_message(event):
                                 "layout": "baseline",
                                 "spacing": "sm",
                                 "contents": [
-                                    {"type": "text", "text": "Time", "color": "#aaaaaa", "size": "sm", "flex": 1},
-                                    {"type": "text", "text": "10:00 - 23:00", "wrap": True, "color": "#666666", "size": "sm", "flex": 5}
+                                    {
+                                        "type": "text",
+                                        "text": "Time",
+                                        "color": "#aaaaaa",
+                                        "size": "sm",
+                                        "flex": 1
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": "10:00 - 23:00",
+                                        "wrap": True,
+                                        "color": "#666666",
+                                        "size": "sm",
+                                        "flex": 5
+                                    }
                                 ]
                             }
                         ]
@@ -154,11 +190,14 @@ def handle_message(event):
                 )
             ]
         )
+
     else:
-        # 通常テキスト返信
+        # それ以外はテキストメッセージで返す
         response = ReplyMessageRequest(
             reply_token=event.reply_token,
-            messages=[TextMessage(text=f"『{user_message}』って感じだね！")]
+            messages=[
+                TextMessage(text=f"『{user_message}』って感じだね！")
+            ]
         )
 
     line_bot_api.reply_message(response)
