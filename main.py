@@ -14,21 +14,21 @@ import os
 import json
 from dotenv import load_dotenv
 
-# .env読み込み
+# .env 読み込み
 load_dotenv()
 ACCESS_TOKEN = os.getenv("CHANNEL_ACCESS_TOKEN")
 CHANNEL_SECRET = os.getenv("CHANNEL_SECRET")
 
-# Flask初期化
+# Flask 初期化
 app = Flask(__name__)
 
-# LINE設定
+# LINE API 初期化
 configuration = Configuration(access_token=ACCESS_TOKEN)
 api_client = ApiClient(configuration=configuration)
 line_bot_api = MessagingApi(api_client)
 handler = WebhookHandler(CHANNEL_SECRET)
 
-# 複数Flexを1ファイルから読み込む関数
+# Flexメッセージ読み込み関数（キーワード検索）
 def get_flex_json_by_keyword(keyword):
     try:
         with open("./flex_messages.json", "r", encoding="utf-8") as f:
@@ -38,22 +38,53 @@ def get_flex_json_by_keyword(keyword):
         print(f"❌ Flexメッセージ読み込みエラー: {e}")
         return None
 
-# Webhookエンドポイント
+# Webhook エンドポイント
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers.get("X-Line-Signature")
     body = request.get_data(as_text=True)
     print("📩 Webhook受信:", body)
 
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError as e:
-        print("❌ 署名エラー:", e)
-        abort(400)
+    if signature:
+        # LINE公式からのWebhook (署名あり)
+        try:
+            handler.handle(body, signature)
+        except InvalidSignatureError as e:
+            print("❌ 署名エラー:", e)
+            abort(400)
+    else:
+        # GASやその他システムからのWebhook (署名なし)
+        try:
+            event_data = json.loads(body)
+            for event in event_data.get("events", []):
+                if event.get("type") == "message" and event["message"]["type"] == "text":
+                    user_message = event["message"]["text"].strip()
+                    reply_token = event["replyToken"]
+
+                    flex_data = get_flex_json_by_keyword(user_message)
+                    if flex_data:
+                        try:
+                            message = FlexMessage(
+                                alt_text=f"{user_message}のFlexメッセージ",
+                                contents=FlexContainer.from_dict(flex_data)
+                            )
+                        except Exception as e:
+                            print("❌ Flex変換エラー:", e)
+                            message = TextMessage(text="Flexメッセージの変換に失敗しました。")
+                    else:
+                        message = TextMessage(text=f"『{user_message}』に対応するメッセージが見つかりませんでした。")
+
+                    response = ReplyMessageRequest(
+                        reply_token=reply_token,
+                        messages=[message]
+                    )
+                    line_bot_api.reply_message(response)
+        except Exception as e:
+            print("❌ GASからのWebhook処理エラー:", e)
 
     return "OK"
 
-# メッセージ受信
+# handler 経由（署名ありの場合）の処理
 @handler.add(MessageEvent)
 def handle_message(event):
     if isinstance(event.message, TextMessageContent):
@@ -63,30 +94,23 @@ def handle_message(event):
 
         if flex_data:
             try:
-                response = ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[
-                        FlexMessage(
-                            alt_text=f"{user_message}のFlexメッセージ",
-                            contents=FlexContainer.from_dict(flex_data)  # ← 型に変換
-                        )
-                    ]
+                message = FlexMessage(
+                    alt_text=f"{user_message}のFlexメッセージ",
+                    contents=FlexContainer.from_dict(flex_data)
                 )
             except Exception as e:
                 print("❌ Flex変換エラー:", e)
-                response = ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text="Flexメッセージの変換に失敗しました。")]
-                )
+                message = TextMessage(text="Flexメッセージの変換に失敗しました。")
         else:
-            response = ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=f"『{user_message}』に対応するメッセージが見つかりませんでした。")]
-            )
+            message = TextMessage(text=f"『{user_message}』に対応するメッセージが見つかりませんでした。")
 
+        response = ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=[message]
+        )
         line_bot_api.reply_message(response)
 
+# アプリ起動
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))  # Renderが自動でセットしてくれるPORTを使う！
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
